@@ -7,7 +7,7 @@
 
 Summary:    Xorg X11 libinput input driver
 Name:       xorg-x11-drv-libinput
-Version:    0.25.0
+Version:    0.27.1
 Release:    2%{?gitdate:.%{gitdate}git%{gitversion}}%{?dist}
 URL:        http://www.x.org
 License:    MIT
@@ -18,6 +18,8 @@ Source0:    %{tarball}-%{gitdate}.tar.xz
 Source0:    ftp://ftp.x.org/pub/individual/driver/%{tarball}-%{version}.tar.bz2
 %endif
 Source1:    40-libinput.conf
+
+Patch01:    0001-draglock-fix-memory-overwrite-during-draglock-parsin.patch
 
 ExcludeArch: s390 s390x
 
@@ -37,6 +39,7 @@ supporting all devices.
 
 %prep
 %setup -q -n %{tarball}-%{?gitdate:%{gitdate}}%{!?gitdate:%{version}}
+%patch01 -p1
 
 %build
 autoreconf --force -v --install || exit 1
@@ -71,6 +74,12 @@ Xorg X11 libinput input driver development files.
 %{_includedir}/xorg/libinput-properties.h
 
 %changelog
+* Fri Jul 13 2018 Peter Hutterer <peter.hutterer@redhat.com> 0.27.1-2
+- Fix invalid-sized memset() in the draglock code
+
+* Thu May 17 2018 Peter Hutterer <peter.hutterer@redhat.com> 0.27.1-1
+- libinput 0.27.1 (#1564643)
+
 * Mon Mar 13 2017 Peter Hutterer <peter.hutterer@redhat.com> 0.25.0-2
 - Don't provide xorg-x11-drv-synaptics (#1413811)
 - Don't reassign libinput to wacom touchpads, that's left to the user

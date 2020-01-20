@@ -1,3 +1,214 @@
+commit 18cc042e6822f5f24d06291ead07ea70723f9434
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Tue Apr 10 09:19:52 2018 +1000
+
+    xf86-input-libinput 0.27.1
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+commit 0db82219bb2ad10dcdf3ea8fe8e226858190c83b
+Author: Evangelos Foutras <evangelos@foutrelis.com>
+Date:   Thu Mar 22 01:47:07 2018 +0200
+
+    Fix "left handed" property not set on all pointers
+    
+    Remove conditional that prevents the LIBINPUT_PROP_LEFT_HANDED{,DEFAULT}
+    properties from being set on all pointer devices (only the first got it).
+    This appears to be a debugging left-over accidentally merged in
+    6d3bd4544a6a2f194fa.
+    
+    https://bugs.freedesktop.org/show_bug.cgi?id=105667
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+commit f93bc148d4e6702d50ce320f6d519753c0af7c42
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Tue Mar 20 11:23:57 2018 +1000
+
+    xf86-input-libinput 0.27.0
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+commit 0d4b50fd6e200cb8b720ee0b917b882d2d03542b
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Mon Mar 19 10:00:59 2018 +1000
+
+    man: note that we don't do /dev/input/by-id or /dev/input/by-path
+    
+    For logind-setups we need to match the path libinput wants to open with the
+    Option Device path that the device has so we know when to return the
+    server-fd. This doesn't work for by-id or by-path because libinput resolves
+    those (through udev) to the actual eventX node so our paths look different
+    when they are the same device.
+    
+    This could be fixed but since this is easy enough to work around with a
+    InputClass section and rather a niche case, it's not really worth the effort.
+    
+    https://bugs.freedesktop.org/show_bug.cgi?id=105562
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+    Reviewed-by: Adam Jackson <ajax@redhat.com>
+
+commit 9d9f59fd4c5a57e4663b19c3cace6f78202c4689
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Fri Feb 2 13:54:32 2018 +1000
+
+    Apply the capabilities checks on subdevices when applying the config
+    
+    Properties are initialized on the correct devices only but on resume we'd just
+    blindly apply the config from our device. Depending on the resume order, this
+    would mean we'd apply a previously set config with a default config.
+    
+    Example:
+    * pointer device with keyboard subdevice
+    * pointer device exports natural scrolling, keyboard device does not and
+      remains at default (off)
+    * client enables natural scrolling on the pointer device
+    * VT switch away, VT switch back
+    * pointer device gets enabled first, enables natural scrolling on the
+      libinput device
+    * keyboard device gets enabled second, resets to the default value
+    
+    Reported-by: Yuxuan Shui <yshuiv7@gmail.com>
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+    Tested-by: Yuxuan Shui <yshuiv7@gmail.com>
+
+commit 73534814909b8b6f4fce8f44b412b2903397bdb0
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Fri Feb 2 13:24:43 2018 +1000
+
+    Split LibinputDeviceApplyConfig into helper functions
+    
+    No functional changes
+
+commit 6d3bd4544a6a2f194fa2ca7e08dca9cc44211e99
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Fri Feb 2 13:27:11 2018 +1000
+
+    Move the subdevice capabilities check into the properties
+    
+    87f9fe3a6fafe60134c6's intention was to not create properties that a subdevice
+    doesn't have configuration options for (i.e. if you have a pointer+keyboard
+    device, don't expose tapping configuration on the keyboard subdevice).
+    
+    The result was messy, the checker function had a confusing triple-negation and
+    some properties weren't checked - e.g. left-handed was allowed for touch/tablet
+    but not for pointer, dwt was allowed for any device.
+    
+    Fix this by moving the check into the property init function directly and
+    inverting the helper function to be easier to read.
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+commit 2be6487de417473aac85ebd800392cdd8604c4a6
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Fri Sep 15 11:26:54 2017 +1000
+
+    xf86-input-libinput 0.26.0
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+commit 6ce3d0249d426e6b3c83e7f86d76bb3145c00a74
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Mon Jun 26 18:27:10 2017 +1000
+
+    Post a motion event before a tablet button down
+    
+    Not all clients update the pointer position correctly from the button events
+    (for historical reasons) so we need to send a motion event before the button
+    event that represents a tip state change.
+    
+    https://bugs.freedesktop.org/show_bug.cgi?id=101588
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+commit 87f9fe3a6fafe60134c69419c0e551b9dbc112b7
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Wed May 24 08:42:02 2017 +1000
+
+    Only initialize properties that match capabilities on a subdevice
+    
+    If a device is split into multiple subdevices, usually pointer+keyboard, we
+    initialized properties matching the libinput device on both devices. This
+    results in the keyboard having e.g. a Accel Speed or Left Handed settings even
+    though it cannot send any events of that type.
+    
+    Filter by capabilities on the subdevice so we only get those properties that
+    match the subdevice's capabilities.
+    
+    https://bugs.freedesktop.org/show_bug.cgi?id=100900
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+commit 0c657e0dcff4cff06a0d4cbea7dfac2a1d505cc3
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Thu May 18 14:02:52 2017 +1000
+
+    Update copyright years
+    
+    because why not
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+commit ac3574958f90bdcac946d26519123d809998c33b
+Author: Niklas Haas <git@haasn.xyz>
+Date:   Mon May 15 03:13:43 2017 +0200
+
+    man: add missing documentation for Accel Profile
+    
+    This seems to have been simply missing from 0163482e.
+    
+    cf. https://bugs.freedesktop.org/show_bug.cgi?id=101017
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+Notes (test-jelly):
+    SUCCESS: jelly: make check Mon May 15 11:42:39 AEST 2017
+
+commit 8772a593b45740f4429218648c9e3a305b3fe896
+Author: Martin Kepplinger <martin.kepplinger@ginzinger.com>
+Date:   Thu May 4 08:49:34 2017 +0200
+
+    Fix config comment description to match the config
+    
+    Since the config matches on tablets too, update the describing comment
+    accordingly.
+    
+    Signed-off-by: Martin Kepplinger <martin.kepplinger@ginzinger.com>
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+commit a80773a488da3f3dfe5a5dc0fd658dc8a6a3b331
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Fri May 5 13:43:23 2017 +1000
+
+    xf86-input-libinput 0.25.1
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
+commit 8bc694595d26c2ae7dd98b27c9eed0ec0366b7a5
+Author: Peter Hutterer <peter.hutterer@who-t.net>
+Date:   Tue Mar 21 13:13:43 2017 +1000
+
+    Post a motion event after proximity events
+    
+    This patch splits the meat of xf86libinput_handle_tablet_axis into a helper
+    function xf86libinput_post_tablet_motion(), to be called right after we send
+    the proximity in event.
+    
+    Clients that don't handle proximity (e.g. all XI2 clients) don't see the
+    coordinates we send along with the proximity events. And, for historical
+    reasons, they may not look at the coordinates in button events. So a device
+    that comes into proximity and immediately sends a tip down button event
+    doesn't send a motion event, causing the client to think the tip down was at
+    whatever the last known position was (before previous prox-out).
+    
+    The practical effect is that when a user tries to draw a few dots, they end up
+    being connected to each other.
+    
+    https://bugzilla.redhat.com/show_bug.cgi?id=1433755
+    
+    Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+
 commit 153a7fc62fa87a2cc2516826b3eae16fa8cc861d
 Author: Peter Hutterer <peter.hutterer@who-t.net>
 Date:   Thu Mar 9 15:58:39 2017 +1000
